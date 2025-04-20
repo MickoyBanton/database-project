@@ -5,10 +5,21 @@ SELECT * FROM Account WHERE UserID = {userid};
 -- Insert into Account
 INSERT INTO Account (UserID, Password, AccountType) VALUES ('{userid}', '{password}', '{accountType}');
 
+-- Check if student exists
+SELECT * 
+FROM Student 
+WHERE UserID = {userid};
+
 -- If student
 INSERT INTO Student (UserID, StudentName, FinalAverage) VALUES ('{userid}', '{studentName}', NULL);
 
+-- Check if lecturer exists
+SELECT * 
+FROM Lecturer 
+WHERE UserID = {userid};
 
+-- If lecturer
+INSERT INTO Lecturer (UserID, LecturerName) VALUES ('{userid}', '{lecturerName}');
 
 --Login User
 --To know if it is student or lecturer and to see if the credentials are correct
@@ -50,7 +61,12 @@ SELECT UserID
 FROM Account 
 WHERE UserID = '{current_user_id}' AND AccountType = 'Student';
 
--- Register
+--check if student is already registerd in the course
+SELECT UserID, CourseID
+FROM Assigned
+WHERE UserID = '{current_user_id}' AND CourseID = '{new_course_id}';
+
+-- Register if not already registered
 INSERT INTO Assigned (CourseID, UserID) VALUES ('{courseID}', '{userID}');
 
 
@@ -90,12 +106,18 @@ FROM DiscussionForum
 WHERE CourseID = '{courseID}';
 
 --Should be able to create a forum for a particular course
+--Check to see if the user is a lecturer
+SELECT userID
+FROM Account
+WHERE UserID= '{current_user_id}' AND AccountType = 'Lecturer';
+
+--Create forum
 INSERT INTO DiscussionForum (ForumID, CourseID, Title, Question) VALUES ('{forumID}', '{courseID}', '{title}', '{question}');
 
 --Should be able to retrieve all the discussion threads for a particular forum
 SELECT Message, Title
 FROM DiscussionThread
-WHERE ForumID = {fourmID_entered}
+WHERE ForumID = {fourmID_entered};
 
 --Should be able to add a new discussion thread to a forum. Each discussion thread should have a title and the post that started the thread.
 INSERT INTO DiscussionForum (ForumID, CourseID, Title, Question) VALUES ("1","comp333", 'Presentation', 'Remember your presentation');
@@ -109,7 +131,13 @@ SELECT userID
 FROM Account
 WHERE UserID= {current_user_id} AND AccountType = 'Lecturer';
 
-INSERT INTO SectionItems (ItemID, SectionID, SectionItem) VALUES ('{itemID}', '{sectionID}', '{content}');
+--Check if lecturer belongs to the course
+SELECT CourseID
+FROM Teach
+WHERE CourseID = '{current_course_id}' AND UserID = '{user_id_entered}';
+
+--Add section Item
+INSERT INTO SectionItems (ItemID, SectionID, SectionItem, FileType) VALUES ('{itemID}', '{sectionID}', '{content}','{filetype}');
 
 --Should be able to retrieve all the course content for a particular course
 --Check if user is lecturer or student
@@ -125,7 +153,7 @@ JOIN Teach t ON a.CourseID = t.CourseID
 WHERE a.UserID = '{current_user_id}' OR t.UserID = '{current_user_id}';
 
 --Retrive Course Material
-SELECT c.CourseName, s.SectionName, si.ItemID, si.SectionItem
+SELECT c.CourseName, s.SectionName, si.ItemID, si.SectionItem, si.FileType
 FROM Course c
 JOIN Section s ON c.CourseID = s.CourseID
 JOIN SectionItems si ON s.SectionID = si.SectionID
@@ -137,6 +165,11 @@ SELECT userID
 FROM Account
 WHERE UserID= {current_user_id} AND AccountType = 'Student';
 
+--check if student belongs to the course
+SELECT CourseID
+FROM Assigned
+WHERE CourseID = '{current_course_id}' AND UserID = '{user_id_entered}';
+
 --Submiting Asignment
 INSERT INTO SubmitAssignment (SubmissionID, UserID, AssignmentID, SubmissionDate) VALUES ('{submissionID}', '{userID}', '{assignmentID}', '{date}');
 
@@ -145,6 +178,11 @@ INSERT INTO SubmitAssignment (SubmissionID, UserID, AssignmentID, SubmissionDate
 SELECT userID
 FROM Account
 WHERE UserID= {current_user_id} AND AccountType = 'Lecturer';
+
+--Check if lecturer belongs to the course
+SELECT CourseID
+FROM Teach
+WHERE CourseID = '{current_course_id}' AND UserID = '{user_id_entered}';
 
 --Grading Assignemnt
 INSERT INTO Grading (SubmissionID, UserID, Grade) VALUES ('{submissionID}', '{lecturerID}', '{grade}');
