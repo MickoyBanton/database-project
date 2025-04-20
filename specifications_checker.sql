@@ -9,13 +9,13 @@ FROM Course
 HAVING COUNT(CourseID) < 200;
 
 --To ensure that no student can do more than 6 courses.
-SELECT UserID, StudentName, COUNT(CourseID) AS CourseCount
+SELECT UserID, COUNT(CourseID) AS CourseCount
 FROM Assigned
 GROUP BY UserID
 HAVING COUNT(CourseID) >= 7;
 
 --To ensure that a student must be enrolled in at least 3 courses.
-SELECT UserID, StudentName, COUNT(CourseID) AS CourseCount
+SELECT UserID, COUNT(CourseID) AS CourseCount
 FROM Assigned
 GROUP BY UserID
 HAVING COUNT(CourseID) < 3;

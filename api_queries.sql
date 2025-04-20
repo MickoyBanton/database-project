@@ -11,7 +11,7 @@ FROM Student
 WHERE UserID = {userid};
 
 -- If student
-INSERT INTO Student (UserID, StudentName, FinalAverage) VALUES ('{userid}', '{studentName}', NULL);
+INSERT INTO Student (UserID, FirstName, LastName,FinalAverage) VALUES ('{userid}', '{firstName}', '{lastName}', NULL);
 
 -- Check if lecturer exists
 SELECT * 
@@ -71,7 +71,7 @@ INSERT INTO Assigned (CourseID, UserID) VALUES ('{courseID}', '{userID}');
 
 
 --Should return members of a particular course
-SELECT  l.LecturerName, s.StudentName
+SELECT  l.FirstName, l.LastName, s.FirstName, s.LastName
 FROM Course c
 INNER JOIN Teach t ON c.CourseID = t.CourseID
 INNER JOIN Lecturer l ON t.UserID = l.UserID
@@ -209,11 +209,11 @@ HAVING COUNT(a.UserID) >= 50;
 
 --All students that do 5 or more courses.
 CREATE VIEW Students_Enrolled_In_5_Or_More_Courses  AS 
-SELECT a.UserID, s.StudentName, COUNT(a.CourseID) AS CourseCount
+SELECT a.UserID, s.FirstName, s.LastName, COUNT(a.CourseID) AS CourseCount
 FROM Assigned a
 INNER JOIN Student s
 ON a.UserID = s.UserID
-GROUP BY a.UserID, s.StudentName
+GROUP BY a.UserID, s.FirstName, s.LastName
 HAVING COUNT(a.CourseID) >= 5; 
 
 --All lecturers that teach 3 or more courses.
@@ -237,7 +237,7 @@ LIMIT 10;
 
 --The top 10 students with the highest overall averages
 CREATE VIEW Top_10_Highest_Average AS
-SELECT StudentName, FinalAverage
+SELECT FirstName, LastName, FinalAverage
 FROM student
 ORDER BY FinalAverage DESC
 LIMIT 10;

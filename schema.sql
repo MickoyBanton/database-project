@@ -11,13 +11,15 @@ CREATE TABLE Account (
 -- Subclasses
 CREATE TABLE Student (
     UserID INT PRIMARY KEY REFERENCES Account(UserID),
-    StudentName VARCHAR(100),
+    FirstName VARCHAR(100),
+    LastName VARCHAR(100),
     FinalAverage DECIMAL(5,2)
 );
 
 CREATE TABLE Lecturer (
     UserID INT PRIMARY KEY REFERENCES Account(UserID),
-    LecturerName VARCHAR(100)
+    FirstName VARCHAR(100),
+    LastName VARCHAR(100)
 );
 
 CREATE TABLE Admin (
