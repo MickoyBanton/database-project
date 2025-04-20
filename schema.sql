@@ -1,3 +1,6 @@
+CREATE DATABASE OURVLE;
+USE OURVLE;
+
 -- Superclass
 CREATE TABLE Account (
     UserID PRIMARY KEY,
