@@ -84,7 +84,8 @@ CREATE TABLE Section (
 CREATE TABLE SectionItems (
     ItemID SERIAL PRIMARY KEY,
     SectionID INT,
-    SectionItem TEXT
+    SectionItem TEXT,
+    FileType VARCHAR(9) NOT NULL CHECK (AccountType IN ('Links', 'Files', 'Slides'))
     FOREIGN KEY SectionID REFERENCES Section(SectionID)
 );
 
