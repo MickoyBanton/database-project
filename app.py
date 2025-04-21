@@ -481,7 +481,47 @@ def top_10_students():
     except Exception as e:
         return make_response({'error': str(e)}, 400)
 
+@app.route('/reports/up-50-students', methods=['GET'])
+@jwt_required()
+def up_50_students():
+    try:
+        cnx = get_db_connection()
+        cursor = cnx.cursor()
+        cursor.execute("SELECT * FROM courses_with_50_or_more_students")
+        courses = cursor.fetchall()
+        cursor.close()
+        cnx.close()
+        return make_response(jsonify(courses), 200)
+    except Exception as e:
+        return make_response({'error': str(e)}, 400)
 
+@app.route('/reports/up-5-courses', methods=['GET'])
+@jwt_required()
+def up_5_courses():
+    try:
+        cnx = get_db_connection()
+        cursor = cnx.cursor()
+        cursor.execute("SELECT * FROM students_enrolled_in_5_or_more_courses")
+        students = cursor.fetchall()
+        cursor.close()
+        cnx.close()
+        return make_response(jsonify(students), 200)
+    except Exception as e:
+        return make_response({'error': str(e)}, 400)
+
+@app.route('/reports/up-3-courses', methods=['GET'])
+@jwt_required()
+def up_3_courses():
+    try:
+        cnx = get_db_connection()
+        cursor = cnx.cursor()
+        cursor.execute("SELECT * FROM lecturers_teaching_3_or_more_courses")
+        lecturers = cursor.fetchall()
+        cursor.close()
+        cnx.close()
+        return make_response(jsonify(lecturers), 200)
+    except Exception as e:
+        return make_response({'error': str(e)}, 400)
     
 if __name__ == '__main__':
     app.run(port=5000)
