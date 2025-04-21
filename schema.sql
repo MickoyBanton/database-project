@@ -1,9 +1,9 @@
-CREATE DATABASE OURVLE;
+CREATE DATABASE IF NOT EXISTS OURVLE;
 USE OURVLE;
 
 -- Superclass
 CREATE TABLE Account (
-    UserID PRIMARY KEY,
+    UserID INT PRIMARY KEY AUTO_INCREMENT,
     Password VARCHAR(100) NOT NULL,
     AccountType VARCHAR(9) NOT NULL CHECK (AccountType IN ('Student', 'Lecturer', 'Admin'))
 );
@@ -34,26 +34,26 @@ CREATE TABLE Course (
 
 -- Student-Course Assignment
 CREATE TABLE Assigned (
-    CourseID INT,
+    CourseID BIGINT UNSIGNED,
     UserID INT,
     PRIMARY KEY (CourseID, UserID),
     FOREIGN KEY (CourseID) REFERENCES Course(CourseID),
-    FOREIGN KEY (UserID) REFERENCES Student(UserID),
+    FOREIGN KEY (UserID) REFERENCES Student(UserID)
 );
 
 -- Lecturer-Course Assignment
 CREATE TABLE Teach (
-    CourseID INT,
+    CourseID BIGINT UNSIGNED,
     UserID INT,
     PRIMARY KEY (CourseID, UserID),
     FOREIGN KEY (CourseID) REFERENCES Course(CourseID),
-    FOREIGN KEY (UserID) REFERENCES Lecturer(UserID),
+    FOREIGN KEY (UserID) REFERENCES Lecturer(UserID)
 );
 
 -- Assignments
 CREATE TABLE Assignment (
     AssignmentID INT PRIMARY KEY AUTO_INCREMENT,
-    CourseID INT,
+    CourseID BIGINT UNSIGNED,
     AssignmentTitle VARCHAR(200),
     Date DATE,
     FOREIGN KEY (CourseID) REFERENCES Course(CourseID)
@@ -90,15 +90,15 @@ CREATE TABLE SectionItems (
     ItemID SERIAL PRIMARY KEY,
     SectionID INT,
     SectionItem TEXT,
-    FileType VARCHAR(9) NOT NULL CHECK (AccountType IN ('Links', 'Files', 'Slides'))
-    FOREIGN KEY SectionID REFERENCES Section(SectionID)
+    FileType VARCHAR(9) NOT NULL CHECK (FileType IN ('Links', 'Files', 'Slides')),
+    FOREIGN KEY (SectionID) REFERENCES Section(SectionID)
 );
 
 
 -- Discussion Forum
 CREATE TABLE DiscussionForum (
     ForumID INT PRIMARY KEY AUTO_INCREMENT,
-    CourseID INT,
+    CourseID BIGINT UNSIGNED,
     Title VARCHAR(200),
     Question TEXT,
     FOREIGN KEY (CourseID) REFERENCES Course(CourseID)
@@ -117,8 +117,55 @@ CREATE TABLE DiscussionThread (
 -- Calendar Events
 CREATE TABLE CalendarEvents (
     EventID INT PRIMARY KEY AUTO_INCREMENT,
-    CourseID INT,
+    CourseID BIGINT UNSIGNED,
     Title VARCHAR(200),
     DueDate DATE,
     FOREIGN KEY (CourseID) REFERENCES Course(CourseID)
 );
+
+
+-- All courses that have 50 or more students
+CREATE VIEW Courses_With_50_Or_More_Students AS
+SELECT a.CourseID, c.CourseName, COUNT(a.UserID) AS StudentCount
+FROM Assigned a
+INNER JOIN Course c
+ON a.CourseID = c.CourseID
+GROUP BY a.CourseID, c.CourseName
+HAVING COUNT(a.UserID) >= 50;
+
+
+-- All students that do 5 or more courses.
+CREATE VIEW Students_Enrolled_In_5_Or_More_Courses  AS
+SELECT a.UserID, s.FirstName, s.LastName, COUNT(a.CourseID) AS CourseCount
+FROM Assigned a
+INNER JOIN Student s
+ON a.UserID = s.UserID
+GROUP BY a.UserID, s.FirstName, s.LastName
+HAVING COUNT(a.CourseID) >= 5;
+
+
+-- All lecturers that teach 3 or more courses.
+CREATE VIEW Lecturers_Teaching_3_Or_More_Courses  AS
+SELECT t.UserID, l.FirstName, l.LastName, COUNT(t.CourseID) AS CourseCount
+FROM Teach t
+INNER JOIN Lecturer l
+ON t.UserID = l.UserID
+GROUP BY t.UserID, l.FirstName, l.LastName
+HAVING COUNT(t.CourseID) >= 3;
+
+-- The 10 most enrolled courses
+CREATE VIEW Top_10_Most_Enrolled_Courses AS
+SELECT a.CourseID, c.CourseName, COUNT(a.UserID) AS NumEnrolled
+FROM Assigned a
+INNER JOIN Course c
+ON a.CourseID = c.CourseID
+GROUP BY a.CourseID, c.CourseName
+ORDER BY NumEnrolled DESC
+LIMIT 10;
+
+-- The top 10 students with the highest overall averages
+CREATE VIEW Top_10_Highest_Average AS
+SELECT FirstName, LastName, FinalAverage
+FROM student
+ORDER BY FinalAverage DESC
+LIMIT 10;
