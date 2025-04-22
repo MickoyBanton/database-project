@@ -123,12 +123,3 @@ CREATE TABLE CalendarEvents (
     FOREIGN KEY (CourseID) REFERENCES Course(CourseID)
 );
 
-
--- All courses that have 50 or more students
-CREATE VIEW Courses_With_50_Or_More_Students AS
-SELECT a.CourseID, c.CourseName, COUNT(a.UserID) AS StudentCount
-FROM Assigned a
-INNER JOIN Course c
-ON a.CourseID = c.CourseID
-GROUP BY a.CourseID, c.CourseName
-HAVING COUNT(a.UserID) >= 50;
