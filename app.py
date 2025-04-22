@@ -1,5 +1,6 @@
 from flask import Flask, request, make_response, jsonify
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
+import json
 import mysql.connector
 
 
@@ -9,10 +10,12 @@ jwt = JWTManager(app)
 
 db_config = {
     "host": "127.0.0.1",
-    "user": "shop_user",
-    "password": "shop876",
-    "database": "shoppers"
+    "user": "root",
+    "password": "toor",
+    "database": "ourvle"
 }
+
+from flask_jwt_extended import create_access_token, decode_token
 
 
 #This function is used to connect to the database
@@ -32,7 +35,8 @@ def register():
     cursor = cnx.cursor()
     email = data['email']
     password = data['password']
-    account_type = data['accountType']
+    account_type = data[('AccountType'
+                         '')]
     try:
         #Checking if this account was already made
         cursor.execute("SELECT * FROM account WHERE UserID= %s", (email))
@@ -40,7 +44,8 @@ def register():
             return make_response(jsonify({"error": "User already exists"}), 409)
 
         #Creates the new if there are no problems
-        cursor.execute("INSERT INTO account (UserID, Password, AccountType) VALUES (%s, %s, %s)",
+        cursor.execute("INSERT INTO account (UserID, Password, AccountType"
+                       ") VALUES (%s, %s, %s)",
                        (email, password, account_type))
         cnx.commit()
         cursor.close()
@@ -55,25 +60,28 @@ def login():
         data = request.get_json()
         cnx = get_db_connection()
         cursor = cnx.cursor(dictionary=True)
-        userid = data['userId']
-        password = data['password']
-        cursor.execute("SELECT * FROM account WHERE userid = %s AND password = %s", userid, password)
+        UserID = data.get('UserID')
+        password = data.get('password')
+        cursor.execute("SELECT * FROM account WHERE UserID = %s AND password = %s", (UserID, password))
         user = cursor.fetchone()
         cursor.close()
         cnx.close()
 
+        print(user)
+
         if user:
-            token = create_access_token(identity={'id': user['userid'], 'role': user['accountType']})
+            token = create_access_token(identity=json.dumps({"id": user.get('UserID'), "role": user['AccountType']}))
             return make_response(jsonify(token=token), 200)
         return make_response(jsonify(message='Invalid credentials.Please try again'), 401)
     except Exception as e:
-        return make_response(jsonify(error=f"Login failed: {str(e)}"), 400)
+        return make_response(jsonify(error=f"Login failed: {e.with_traceback()}"), 400)
 
 #Only allows admin to create courses
 @app.route('/create_course', methods=['POST'])
 @jwt_required()
 def create_course():
-    identity = get_jwt_identity()
+    jwt_id = get_jwt_identity()
+    identity = json.loads(jwt_id)
     if identity['role'] != 'admin':
         return make_response(jsonify(message='Unauthorized'), 403)
 
@@ -134,14 +142,14 @@ def get_student_courses(student_id):
     except Exception as e:
         return make_response({'error': str(e)}, 400)
     
-@app.route('/lecturers/<lecturerid>/courses', methods=['GET'])
+@app.route('/lecturers/<lecturer_id>/courses', methods=['GET'])
 @jwt_required()
 def get_lecturer_courses(lecturer_id):
     try:
         cnx = get_db_connection()
         cursor = cnx.cursor(dictionary=True)
         cursor.execute("""SELECT c.* FROM course c 
-                       JOIN teach t ON t.CourseID = c.CourseID = t.CourseID
+                       JOIN teach t ON t.CourseID = c.CourseID
                        WHERE t.UserID = %s""", (lecturer_id,))
         courses = cursor.fetchall()
         cursor.close()
@@ -156,7 +164,9 @@ def get_lecturer_courses(lecturer_id):
 @jwt_required()
 def enroll_course(courseId):
     try:
-        identity = get_jwt_identity()
+        jwt_id = get_jwt_identity()
+        print(jwt_id)
+        identity = json.loads(jwt_id)
         if identity['role'] != 'student':
             return make_response({'message': 'Only students can enroll'}, 403)
 
@@ -180,15 +190,15 @@ def get_course_members(courseId):
         cursor = cnx.cursor(dictionary=True)
 
         cursor.execute("""
-            SELECT s.userid, s.FirstName, s.LastName FROM student s
-            JOIN assigned a ON a.UserID = s.userid
+            SELECT s.UserID, s.FirstName, s.LastName FROM student s
+            JOIN assigned a ON a.UserID = s.UserID
             WHERE a.courseId = %s
-        """, courseId)
+        """, (courseId,))
         students = cursor.fetchall()
 
         cursor.execute("""
-                    SELECT l.userid, l.FirstName, l.LastName FROM lecturer l
-                    JOIN teach t ON t.UserID = l.userid
+                    SELECT l.UserID, l.FirstName, l.LastName FROM lecturer l
+                    JOIN teach t ON t.UserID = l.UserID
                     WHERE t.courseId = %s
                 """, (courseId,))
         lecturers = cursor.fetchall()
@@ -236,7 +246,8 @@ def get_student_calendar_by_date(student_id, date):
 @app.route('/calendar', methods=['POST'])
 @jwt_required()
 def create_calendar_event():
-    identity = get_jwt_identity()
+    jwt_id = get_jwt_identity()
+    identity = json.loads(jwt_id)
     if identity['role'] != 'lecturer':
         return make_response({'message': 'Only lecturers can create calendar events'}, 403)
 
@@ -370,7 +381,7 @@ def get_replies(thread_id):
             SELECT r.ThreadID, r.Message, r.UserID AS created_by
             FROM discussionthread r
             JOIN account a ON r.UserID = a.UserID
-            WHERE r.ThreadID = %s
+            WHERE r.ParentThreadId = %s
         """, (thread_id,))
         replies = cursor.fetchall()
         cursor.close()
@@ -383,7 +394,8 @@ def get_replies(thread_id):
 @app.route('/assignments/<assignment_id>/submit', methods=['POST'])
 @jwt_required()
 def submit_assignment(assignment_id):
-    identity = get_jwt_identity()
+    jwt_id = get_jwt_identity()
+    identity = json.loads(jwt_id)
     if identity['role'] != 'student':
         return make_response({'error': 'Only students can submit assignments'}, 401)
     try:
@@ -391,7 +403,6 @@ def submit_assignment(assignment_id):
         cnx = get_db_connection()
         cursor = cnx.cursor()
         content = request.json
-        assignment_id = content['assignment_id']
         submission_date = content['submission_date']
 
         cursor.execute("""
@@ -409,7 +420,8 @@ def submit_assignment(assignment_id):
 @app.route('/assignments/<submission_id>/grade', methods=['POST'])
 @jwt_required()
 def grade_submission(submission_id):
-    identity = get_jwt_identity()
+    jwt_id = get_jwt_identity()
+    identity = json.loads(jwt_id)
     if identity['role'] != 'lecturer':
         return make_response({'error': 'Only lecturers can grade assignments'}, 401)
 
@@ -440,7 +452,7 @@ def get_grades(assignment_id):
         cursor = cnx.cursor(dictionary=True)
 
         cursor.execute("""
-            SELECT s.SubmissionID, g.grade, s.userid AS student_name
+            SELECT s.SubmissionID, g.grade, s.UserID AS student_name
             FROM grading g
             JOIN submitassignment s ON g.SubmissionID = s.SubmissionID
             WHERE s.AssignmentID = %s
