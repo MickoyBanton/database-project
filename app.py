@@ -1,5 +1,6 @@
 from flask import Flask, request, make_response, jsonify
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
+from  flask_cors import CORS, cross_origin
 import json
 import mysql.connector
 
@@ -7,6 +8,8 @@ import mysql.connector
 app = Flask(__name__)
 app.config['JWT_SECRET_KEY'] = 'super-secret-key'
 jwt = JWTManager(app)
+cors = CORS(app)
+app.config['CORS_HEADERS'] = 'Content-Type'
 
 db_config = {
     "host": "127.0.0.1",
@@ -33,20 +36,22 @@ def register():
     data = request.get_json()
     cnx = get_db_connection()
     cursor = cnx.cursor()
-    email = data['email']
+    first_name = data['first_name']
+    last_name = data['last_name']
     password = data['password']
     account_type = data[('AccountType'
                          '')]
     try:
-        #Checking if this account was already made
-        cursor.execute("SELECT * FROM account WHERE UserID= %s", (email))
-        if cursor.fetchone():
-            return make_response(jsonify({"error": "User already exists"}), 409)
-
         #Creates the new if there are no problems
-        cursor.execute("INSERT INTO account (UserID, Password, AccountType"
-                       ") VALUES (%s, %s, %s)",
-                       (email, password, account_type))
+        cursor.execute("INSERT INTO account (Password, AccountType"
+                       ") VALUES (%s, %s)",
+                       (password, account_type))
+        acc_id = cursor.lastrowid
+
+        cursor.execute(f"INSERT INTO {account_type} (UserID, FirstName, LastName)"
+                        " VALUES (%s, %s, %s)",
+                        (acc_id, first_name, last_name))
+
         cnx.commit()
         cursor.close()
         cnx.close()
