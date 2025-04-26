@@ -13,7 +13,6 @@ CREATE TABLE Student (
     UserID INT PRIMARY KEY REFERENCES Account(UserID),
     FirstName VARCHAR(100),
     LastName VARCHAR(100),
-    FinalAverage DECIMAL(5,2)
 );
 
 CREATE TABLE Lecturer (
