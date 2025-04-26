@@ -33,7 +33,7 @@ def register():
     cursor = cnx.cursor()
     userID = data['UserID']
     password = data['password']
-    account_type = data[('AccountType')]
+    account_type = data['AccountType']
                          
     try:
         #Checking if this account was already made
