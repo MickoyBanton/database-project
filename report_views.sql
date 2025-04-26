@@ -1,3 +1,12 @@
+-- All courses that have 50 or more students
+CREATE VIEW Courses_With_50_Or_More_Students AS
+SELECT a.CourseID, c.CourseName, COUNT(a.UserID) AS StudentCount
+FROM Assigned a
+INNER JOIN Course c
+ON a.CourseID = c.CourseID
+GROUP BY a.CourseID, c.CourseName
+HAVING COUNT(a.UserID) >= 50;
+
 -- All students that do 5 or more courses.
 CREATE VIEW Students_Enrolled_In_5_Or_More_Courses  AS 
 SELECT a.UserID, s.FirstName, s.LastName, COUNT(a.CourseID) AS CourseCount
@@ -28,16 +37,11 @@ LIMIT 10;
 
 -- The top 10 students with the highest overall averages
 CREATE VIEW Top_10_Highest_Average AS
-SELECT FirstName, LastName, FinalAverage
-FROM student
-ORDER BY FinalAverage DESC
+SELECT g.UserID, s.FirstName, s.LastName, AVG(g.Grade) AS AverageGrade
+FROM Grading g
+INNER JOIN Student s
+ON g.UserID = s.UserID
+GROUP BY g.UserID, s.FirstName, s.LastName
+ORDER BY AverageGrade
 LIMIT 10;
 
--- All courses that have 50 or more students
-CREATE VIEW Courses_With_50_Or_More_Students AS
-SELECT a.CourseID, c.CourseName, COUNT(a.UserID) AS StudentCount
-FROM Assigned a
-INNER JOIN Course c
-ON a.CourseID = c.CourseID
-GROUP BY a.CourseID, c.CourseName
-HAVING COUNT(a.UserID) >= 50;
