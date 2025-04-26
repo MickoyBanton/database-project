@@ -13,9 +13,9 @@ app.config['CORS_HEADERS'] = 'Content-Type'
 
 db_config = {
     "host": "127.0.0.1",
-    "user": "root",
-    "password": "toor",
-    "database": "ourvle"
+    "user": "group1",
+    "password": "12345",
+    "database": "OURVLE"
 }
 
 from flask_jwt_extended import create_access_token, decode_token
