@@ -39,8 +39,7 @@ def register():
     first_name = data['first_name']
     last_name = data['last_name']
     password = data['password']
-    account_type = data[('AccountType'
-                         '')]
+    account_type = data['AccountType']
     try:
         #Creates the new if there are no problems
         cursor.execute("INSERT INTO account (Password, AccountType"
