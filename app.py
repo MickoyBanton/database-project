@@ -28,7 +28,7 @@ def get_db_connection():
 
 @app.route('/')
 def welcome():
-    return "Welcome to YOURVLE!"
+    return "Welcome to OURVLE!"
 
 
 @app.route('/register', methods=['POST'])
@@ -94,6 +94,16 @@ def create_course():
     cursor = cnx.cursor()
     courseName = data['CourseName']
     lecturerid = data['lecturer_id']
+
+    #check to see if lecturer is teaching more than 4 courses
+    try:
+        cursor.execute(f"SELECT COUNT(CourseID) FROM teach WHERE UserID = {lecturerid} GROUP BY UserID")
+        CourseCount = cursor.fetchall()
+
+        if CourseCount > 4:
+            return make_response(jsonify(error=f"Course was not created. Lecturer {lecturerid} is assigned to 5 courses.: {str(e)}"), 400)
+    except:
+        return make_response(jsonify(error=f"Course was not created: {str(e)}"), 400)
 
     try:
         cursor.execute("INSERT INTO course (CourseName) VALUES (%s)",
@@ -173,7 +183,14 @@ def enroll_course(courseId):
         identity = json.loads(jwt_id)
         if identity['role'] != 'student':
             return make_response({'message': 'Only students can enroll'}, 403)
+        
+        #check to see if a student is doing more than 5 courses
+        cursor.execute(f"SELECT COUNT(CourseID) FROM Assigned WHERE UserID = {identity['id']} GROUP BY UserID")
+        CourseCount = cursor.fetchall()
 
+        if CourseCount > 5:
+            return make_response(jsonify(error=f"Course was not created. Student {identity['id']} is assigned to 5 courses.: {str(e)}"), 400)
+    
         cnx = get_db_connection()
         cursor = cnx.cursor()
         cursor.execute("INSERT INTO assigned (CourseID, UserID) VALUES (%s, %s)",
@@ -291,7 +308,15 @@ def get_forums(course_id):
 @app.route('/forums', methods=['POST'])
 @jwt_required()
 def create_forum():
+
+    jwt_id = get_jwt_identity()
+    identity = json.loads(jwt_id)
+    # only lecturer can create a forum
+    if identity['role'] != 'lecturer':
+        return make_response({'message': 'Only lecturers can create calendar events'}, 403)
+
     try:
+
         content = request.json
         courseId = content['courseId']
         title = content['title']
@@ -354,7 +379,7 @@ def create_thread(forum_id):
 
 @app.route('/threads/<thread_id>/replies', methods=['POST'])
 @jwt_required()
-def create_reply(thread_id):
+def create_reply(thread_id): #remove thread_id
     try:
         cnx = get_db_connection()
         cursor = cnx.cursor()
