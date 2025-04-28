@@ -181,6 +181,8 @@ def enroll_course(courseId):
         jwt_id = get_jwt_identity()
         print(jwt_id)
         identity = json.loads(jwt_id)
+        cnx = get_db_connection()
+        cursor = cnx.cursor()
         if identity['role'] != 'student':
             return make_response({'message': 'Only students can enroll'}, 403)
         
@@ -191,8 +193,7 @@ def enroll_course(courseId):
         if CourseCount > 5:
             return make_response(jsonify(error=f"Course was not created. Student {identity['id']} is assigned to 5 courses.: {str(e)}"), 400)
     
-        cnx = get_db_connection()
-        cursor = cnx.cursor()
+        
         cursor.execute("INSERT INTO assigned (CourseID, UserID) VALUES (%s, %s)",
                        (courseId, identity['id']))
         cnx.commit()
@@ -313,7 +314,7 @@ def create_forum():
     identity = json.loads(jwt_id)
     # only lecturer can create a forum
     if identity['role'] != 'lecturer':
-        return make_response({'message': 'Only lecturers can create calendar events'}, 403)
+        return make_response({'message': 'Only lecturers can create forums'}, 403)
 
     try:
 
@@ -483,11 +484,11 @@ def add_content(section_id):
             return make_response({'error': 'Only lecturers can add content'}, 403)
 
         content = request.get_json()
+        cnx = get_db_connection()
+        cursor = cnx.cursor()
         content_type = content['content_type'] #links, file, slides
         content_value = content['content_value'] #url or text
 
-        cnx = get_db_connection()
-        cursor = cnx.cursor()
         cursor.execute("""
             INSERT INTO CourseContent (section_id, content_type, content_value)
             VALUES (%s, %s, %s)
@@ -502,9 +503,9 @@ def add_content(section_id):
 
 
 # Get content in a section
-@app.route('/sections/<section_id>/content', methods=['GET'])
+@app.route('/sections/<section_id>/sectionitem', methods=['GET'])
 @jwt_required()
-def get_content(section_id):
+def get_sectionitem(section_id):
     try:
         cnx = get_db_connection()
         cursor = cnx.cursor(dictionary=True)
