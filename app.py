@@ -130,7 +130,7 @@ def create_course():
 
     try:
         cursor.execute("INSERT INTO course (CourseName) VALUES (%s)", (courseName,))
-        cnx.commit()
+        #cnx.commit()
 
         courseId = cursor.lastrowid
         print(courseId)
@@ -165,6 +165,14 @@ def get_courses():
 @jwt_required()
 def get_student_courses(student_id):
     try:
+
+        jwt_id = get_jwt_identity()
+        identity = json.loads(jwt_id)
+
+        #check to ensure user is an student
+        if identity['role'] != 'student':
+            return make_response(jsonify(message='Unauthorized'), 403)
+        
         cnx = get_db_connection()
         cursor = cnx.cursor(dictionary=True)
         cursor.execute("""
@@ -185,6 +193,14 @@ def get_student_courses(student_id):
 @jwt_required()
 def get_lecturer_courses(lecturer_id):
     try:
+
+        jwt_id = get_jwt_identity()
+        identity = json.loads(jwt_id)
+
+        #check to ensure user is an lecturer
+        if identity['role'] != 'lecturer':
+            return make_response(jsonify(message='Unauthorized'), 403)
+        
         cnx = get_db_connection()
         cursor = cnx.cursor(dictionary=True)
         cursor.execute("""SELECT c.* FROM course c 
@@ -208,6 +224,7 @@ def enroll_course(courseId):
         identity = json.loads(jwt_id)
         cnx = get_db_connection()
         cursor = cnx.cursor()
+        
         if identity['role'] != 'student':
             return make_response({'message': 'Only students can enroll'}, 403)
         
@@ -238,6 +255,13 @@ def get_course_members(courseId):
         cnx = get_db_connection()
         cursor = cnx.cursor(dictionary=True)
 
+        # Check if the course exists
+        cursor.execute("SELECT * FROM Course WHERE CourseId = %s", (courseId,))
+        course = cursor.fetchone()
+
+        if not course:
+            return jsonify({"message": "Course not found"}), 404
+
         cursor.execute("""
             SELECT s.UserID, s.FirstName, s.LastName FROM student s
             JOIN assigned a ON a.UserID = s.UserID
@@ -265,6 +289,12 @@ def get_course_calendar(course_id):
     try:
         cnx = get_db_connection()
         cursor = cnx.cursor(dictionary=True)
+
+        # Check if the course exists
+        cursor.execute("SELECT CourseId FROM Course WHERE CourseId = %s", (course_id,))
+        if cursor.fetchone() is None:
+            return jsonify({"message": "Course not found"}), 404
+        
         cursor.execute("SELECT * FROM calendarevents WHERE CourseID = %s", (course_id,))
         calendar_events = cursor.fetchall()
 
