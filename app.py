@@ -186,10 +186,8 @@ def enroll_course(courseId):
         jwt_id = get_jwt_identity()
         print(jwt_id)
         identity = json.loads(jwt_id)
-
         cnx = get_db_connection()
         cursor = cnx.cursor()
-
         if identity['role'] != 'student':
             return make_response({'message': 'Only students can enroll'}, 403)
         
@@ -202,6 +200,7 @@ def enroll_course(courseId):
         if course_count > 5:
             return make_response(jsonify(error=f"Course was not enrolled. Student {identity['id']} is assigned to 6 courses."), 400)
     
+        
         cursor.execute("INSERT INTO assigned (CourseID, UserID) VALUES (%s, %s)",
                        (courseId, identity['id']))
         cnx.commit()
@@ -324,7 +323,7 @@ def create_forum():
 
     # only lecturer can create a forum
     if identity['role'] != 'lecturer':
-        return make_response({'message': 'Only lecturers can create calendar events'}, 403)
+        return make_response({'message': 'Only lecturers can create forums'}, 403)
 
     try:
 
@@ -435,6 +434,109 @@ def get_replies(thread_id):
         return make_response(jsonify(replies), 200)
     except Exception as e:
         return make_response({'error': str(e)}, 400)
+
+
+# Create a section (Lecturer only)
+@app.route('/courses/<course_id>/sections', methods=['POST'])
+@jwt_required()
+def create_section(course_id):
+    try:
+        jwt_identity = get_jwt_identity()
+        identity = json.loads(jwt_identity)
+
+        if identity['role'] != 'lecturer':
+            return make_response({'error': 'Only lecturers can create sections'}, 403)
+
+        content = request.get_json()
+        title = content['title']
+
+        cnx = get_db_connection()
+        cursor = cnx.cursor()
+        cursor.execute("""
+            INSERT INTO Section (course_id, title)
+            VALUES (%s, %s)
+        """, (course_id, title))
+        cnx.commit()
+        cursor.close()
+        cnx.close()
+
+        return make_response({'message': 'Section created successfully'}, 201)
+    except Exception as e:
+        return make_response({'error': f'Failed to create section: {str(e)}'}, 400)
+
+
+# Get sections for a course
+@app.route('/courses/<course_id>/sections', methods=['GET'])
+@jwt_required()
+def get_sections(course_id):
+    try:
+        cnx = get_db_connection()
+        cursor = cnx.cursor()
+        cursor.execute("""
+            SELECT section_id, title
+            FROM Section
+            WHERE course_id = %s
+        """, (course_id,))
+        sections = cursor.fetchall()
+        cursor.close()
+        cnx.close()
+
+        return make_response(jsonify(sections), 200)
+    except Exception as e:
+        return make_response({'error': f'Failed to fetch sections: {str(e)}'}, 400)
+
+
+# Add content to a section (Lecturers only)
+@app.route('/sections/<section_id>/content', methods=['POST'])
+@jwt_required()
+def add_content(section_id):
+    try:
+        jwt_identity = get_jwt_identity()
+        identity = json.loads(jwt_identity)
+
+        if identity['role'] != 'lecturer':
+            return make_response({'error': 'Only lecturers can add content'}, 403)
+
+        content = request.get_json()
+        cnx = get_db_connection()
+        cursor = cnx.cursor()
+        content_type = content['content_type'] #links, file, slides
+        content_value = content['content_value'] #url or text
+
+        cursor.execute("""
+            INSERT INTO CourseContent (section_id, content_type, content_value)
+            VALUES (%s, %s, %s)
+        """, (section_id, content_type, content_value))
+        cnx.commit()
+        cursor.close()
+        cnx.close()
+
+        return make_response({'message': 'Content added successfully'}, 201)
+    except Exception as e:
+        return make_response({'error': f'Failed to add content: {str(e)}'}, 400)
+
+
+# Get content in a section
+@app.route('/sections/<section_id>/sectionitem', methods=['GET'])
+@jwt_required()
+def get_sectionitem(section_id):
+    try:
+        cnx = get_db_connection()
+        cursor = cnx.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT content_type, content_value
+            FROM CourseContent
+            WHERE section_id = %s
+        """, (section_id,))
+        content = cursor.fetchall()
+        cursor.close()
+        cnx.close()
+
+        return make_response(jsonify(content), 200)
+    except Exception as e:
+        return make_response({'error': f'Failed to fetch content: {str(e)}'}, 400)
+
+
 
 @app.route('/assignments/<assignment_id>/submit', methods=['POST'])
 @jwt_required()
