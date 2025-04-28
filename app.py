@@ -125,7 +125,7 @@ def create_course():
 
         if CourseCount and CourseCount[0] >= 5:
             return make_response(jsonify(error=f"Course was not created. Lecturer {lecturerid} is assigned to 5 courses.:"), 400)
-    except:
+    except Exception as e:
         return make_response(jsonify(error=f"Course was not created: {str(e)}"), 400)
 
     try:
@@ -503,7 +503,7 @@ def create_section(course_id):
         cnx = get_db_connection()
         cursor = cnx.cursor()
         cursor.execute("""
-            INSERT INTO Section (course_id, title)
+            INSERT INTO Section (courseid, SectionName)
             VALUES (%s, %s)
         """, (course_id, title))
         cnx.commit()
@@ -523,9 +523,9 @@ def get_sections(course_id):
         cnx = get_db_connection()
         cursor = cnx.cursor()
         cursor.execute("""
-            SELECT section_id, title
+            SELECT SectionID, SectionName
             FROM Section
-            WHERE course_id = %s
+            WHERE CourseID = %s
         """, (course_id,))
         sections = cursor.fetchall()
         cursor.close()
@@ -554,7 +554,7 @@ def add_content(section_id):
         content_value = content['content_value'] #url or text
 
         cursor.execute("""
-            INSERT INTO CourseContent (section_id, content_type, content_value)
+            INSERT INTO sectionitems (SectionID, FileType, SectionItem)
             VALUES (%s, %s, %s)
         """, (section_id, content_type, content_value))
         cnx.commit()
@@ -574,9 +574,9 @@ def get_sectionitem(section_id):
         cnx = get_db_connection()
         cursor = cnx.cursor(dictionary=True)
         cursor.execute("""
-            SELECT content_type, content_value
-            FROM CourseContent
-            WHERE section_id = %s
+            SELECT FileType, SectionItem
+            FROM sectionitems
+            WHERE sectionid = %s
         """, (section_id,))
         content = cursor.fetchall()
         cursor.close()
@@ -661,6 +661,29 @@ def get_grades(assignment_id):
         return make_response(jsonify(grades), 200)
     except Exception as e:
         return make_response({'error': str(e)}, 400)
+
+@app.route('/assignments', methods=['POST'])
+@jwt_required()
+def create_assignment():
+    jwt_id = get_jwt_identity()
+    identity = json.loads(jwt_id)
+    if identity['role'] != 'lecturer':
+        return make_response({'error': 'Only lecturers can create assignments'}, 401)
+    try:
+        cnx = get_db_connection()
+        cursor = cnx.cursor()
+        course_id = request.json.get('course_id')
+        assignment_title = request.json.get('title')
+        date = request.json.get('date')
+
+        cursor.execute("INSERT INTO assignment (CourseID, AssignmentTitle, Date) values (%s, %s, %s)", (course_id, assignment_title, date))
+        cnx.commit()
+        cursor.close()
+        return make_response({'message': 'Assignment created successfully.'}, 201)
+    except Exception as e:
+        return make_response({'error': str(e)}, 400)
+
+
 
 @app.route('/reports/top_10_courses', methods=['GET'])
 @jwt_required()
