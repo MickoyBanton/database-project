@@ -42,9 +42,8 @@ def register():
     account_type = data['AccountType']
     try:
         #Creates the new if there are no problems
-        cursor.execute("INSERT INTO account (Password, AccountType"
-                       ") VALUES (%s, %s)",
-                       (password, account_type))
+        cursor.execute("INSERT INTO account (Password, AccountType) VALUES (%s, %s)", (password, account_type))
+
         acc_id = cursor.lastrowid
 
         cursor.execute(f"INSERT INTO {account_type} (UserID, FirstName, LastName)"
@@ -76,9 +75,12 @@ def login():
         if user:
             token = create_access_token(identity=json.dumps({"id": user.get('UserID'), "role": user['AccountType']}))
             return make_response(jsonify(token=token), 200)
+        
         return make_response(jsonify(message='Invalid credentials.Please try again'), 401)
+    
     except Exception as e:
-        return make_response(jsonify(error=f"Login failed: {e.with_traceback()}"), 400)
+       return make_response(jsonify(error=f"Login failed: {str(e)}"), 400)
+    
 
 #Only allows admin to create courses
 @app.route('/create_course', methods=['POST'])
@@ -86,6 +88,7 @@ def login():
 def create_course():
     jwt_id = get_jwt_identity()
     identity = json.loads(jwt_id)
+    
     if identity['role'] != 'admin':
         return make_response(jsonify(message='Unauthorized'), 403)
 
@@ -97,26 +100,28 @@ def create_course():
 
     #check to see if lecturer is teaching more than 4 courses
     try:
-        cursor.execute(f"SELECT COUNT(CourseID) FROM teach WHERE UserID = {lecturerid} GROUP BY UserID")
-        CourseCount = cursor.fetchall()
+        cursor.execute("SELECT COUNT(CourseID) FROM teach WHERE UserID = %s GROUP BY UserID", (lecturerid,))
+        CourseCount = cursor.fetchone()
 
-        if CourseCount > 4:
-            return make_response(jsonify(error=f"Course was not created. Lecturer {lecturerid} is assigned to 5 courses.: {str(e)}"), 400)
+        if CourseCount and CourseCount[0] >= 5:
+            return make_response(jsonify(error=f"Course was not created. Lecturer {lecturerid} is assigned to 5 courses.:"), 400)
     except:
         return make_response(jsonify(error=f"Course was not created: {str(e)}"), 400)
 
     try:
-        cursor.execute("INSERT INTO course (CourseName) VALUES (%s)",
-                       courseName)
+        cursor.execute("INSERT INTO course (CourseName) VALUES (%s)", (courseName,))
         cnx.commit()
 
         courseId = cursor.lastrowid
+        print(courseId)
         cursor.execute("INSERT INTO teach (CourseID, UserID) VALUES (%s, %s)",
                        (courseId, lecturerid))
+        cnx.commit()
         cursor.close()
         cnx.close()
 
         return make_response(jsonify(message='Course created'), 201)
+    
     except Exception as e:
         return make_response(jsonify(error=f"Course was not created: {str(e)}"), 400)
     
@@ -181,18 +186,22 @@ def enroll_course(courseId):
         jwt_id = get_jwt_identity()
         print(jwt_id)
         identity = json.loads(jwt_id)
+
+        cnx = get_db_connection()
+        cursor = cnx.cursor()
+
         if identity['role'] != 'student':
             return make_response({'message': 'Only students can enroll'}, 403)
         
         #check to see if a student is doing more than 5 courses
         cursor.execute(f"SELECT COUNT(CourseID) FROM Assigned WHERE UserID = {identity['id']} GROUP BY UserID")
-        CourseCount = cursor.fetchall()
+        CourseCount = cursor.fetchone()
 
-        if CourseCount > 5:
-            return make_response(jsonify(error=f"Course was not created. Student {identity['id']} is assigned to 5 courses.: {str(e)}"), 400)
+        course_count = CourseCount[0]
+
+        if course_count > 5:
+            return make_response(jsonify(error=f"Course was not enrolled. Student {identity['id']} is assigned to 6 courses."), 400)
     
-        cnx = get_db_connection()
-        cursor = cnx.cursor()
         cursor.execute("INSERT INTO assigned (CourseID, UserID) VALUES (%s, %s)",
                        (courseId, identity['id']))
         cnx.commit()
@@ -227,7 +236,7 @@ def get_course_members(courseId):
         cursor.close()
         cnx.close()
         return make_response(jsonify({"students": students,
-                                      "lecturers": lecturers}), 200)
+                                      "lecturer": lecturers}), 200)
     except Exception as e:
         return make_response({'error':f"Could not get course members: {str(e)}"}, 400)
 
@@ -269,6 +278,7 @@ def get_student_calendar_by_date(student_id, date):
 def create_calendar_event():
     jwt_id = get_jwt_identity()
     identity = json.loads(jwt_id)
+
     if identity['role'] != 'lecturer':
         return make_response({'message': 'Only lecturers can create calendar events'}, 403)
 
@@ -311,6 +321,7 @@ def create_forum():
 
     jwt_id = get_jwt_identity()
     identity = json.loads(jwt_id)
+
     # only lecturer can create a forum
     if identity['role'] != 'lecturer':
         return make_response({'message': 'Only lecturers can create calendar events'}, 403)
@@ -354,6 +365,7 @@ def get_threads(forum_id):
     except Exception as e:
         return make_response({'error': str(e)}, 400)
 
+#get all top level threads
 @app.route('/forums/<forum_id>/threads', methods=['POST'])
 @jwt_required()
 def create_thread(forum_id):
@@ -363,8 +375,9 @@ def create_thread(forum_id):
         content = request.json
         message = content['message']
         parent_id = content.get('parent_id')
-        created_by = get_jwt_identity().get('id')
-
+        identity = json.loads(get_jwt_identity())
+        created_by = identity.get('id') 
+        
         cursor.execute("""
             INSERT INTO discussionthread (ForumID, UserID, Message, ParentThreadId)
             VALUES (%s, %s, %s, %s)
@@ -377,16 +390,18 @@ def create_thread(forum_id):
     except Exception as e:
         return make_response({'error': str(e)}, 400)
 
+#create replies
 @app.route('/threads/<thread_id>/replies', methods=['POST'])
 @jwt_required()
-def create_reply(thread_id): #remove thread_id
+def create_reply():
     try:
         cnx = get_db_connection()
         cursor = cnx.cursor()
         content = request.json
         message = content['message']
         parent_id = content.get('parent_id')
-        created_by = content['created_by']  # User making the reply
+        identity = json.loads(get_jwt_identity())
+        created_by = identity.get('id')
 
         cursor.execute("""
             INSERT INTO discussionthread (UserID, Message, ParentThreadId)
@@ -400,6 +415,7 @@ def create_reply(thread_id): #remove thread_id
     except Exception as e:
         return make_response({'error': str(e)}, 400)
 
+#get all replies
 @app.route('/threads/<thread_id>/replies', methods=['GET'])
 @jwt_required()
 def get_replies(thread_id):
