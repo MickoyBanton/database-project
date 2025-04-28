@@ -539,7 +539,7 @@ def get_sections(course_id):
 # Add content to a section (Lecturers only)
 @app.route('/sections/<section_id>/content', methods=['POST'])
 @jwt_required()
-def add_content(section_id):
+def create_section_item(section_id):
     try:
         jwt_identity = get_jwt_identity()
         identity = json.loads(jwt_identity)
@@ -551,7 +551,7 @@ def add_content(section_id):
         cnx = get_db_connection()
         cursor = cnx.cursor()
         content_type = content['content_type'] #links, file, slides
-        content_value = content['content_value'] #url or text
+        content_value = content['content'] #url or text
 
         cursor.execute("""
             INSERT INTO sectionitems (SectionID, FileType, SectionItem)
@@ -567,9 +567,9 @@ def add_content(section_id):
 
 
 # Get content in a section
-@app.route('/sections/<section_id>/sectionitem', methods=['GET'])
+@app.route('/sections/<section_id>/section-item', methods=['GET'])
 @jwt_required()
-def get_sectionitem(section_id):
+def get_section_item(section_id):
     try:
         cnx = get_db_connection()
         cursor = cnx.cursor(dictionary=True)
@@ -665,11 +665,12 @@ def get_grades(assignment_id):
 @app.route('/assignments', methods=['POST'])
 @jwt_required()
 def create_assignment():
-    jwt_id = get_jwt_identity()
-    identity = json.loads(jwt_id)
-    if identity['role'] != 'lecturer':
-        return make_response({'error': 'Only lecturers can create assignments'}, 401)
     try:
+        jwt_id = get_jwt_identity()
+        identity = json.loads(jwt_id)
+        if identity['role'] != 'lecturer':
+            return make_response({'error': 'Only lecturers can create assignments'}, 401)
+
         cnx = get_db_connection()
         cursor = cnx.cursor()
         course_id = request.json.get('course_id')
