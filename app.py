@@ -3,7 +3,7 @@ from flask_jwt_extended import JWTManager, create_access_token, jwt_required, ge
 from  flask_cors import CORS, cross_origin
 import json
 import mysql.connector
-
+from datetime import datetime
 
 app = Flask(__name__)
 app.config['JWT_SECRET_KEY'] = 'super-secret-key'
@@ -224,7 +224,7 @@ def enroll_course(courseId):
         identity = json.loads(jwt_id)
         cnx = get_db_connection()
         cursor = cnx.cursor()
-        
+
         if identity['role'] != 'student':
             return make_response({'message': 'Only students can enroll'}, 403)
         
@@ -303,18 +303,33 @@ def get_course_calendar(course_id):
         return make_response(jsonify(calendar_events), 200)
     except Exception as e:
         return make_response({'error': str(e)}, 400)
-
+    
+# Get all calendar events for a student on a specific date
 @app.route('/students/<student_id>/calendar/<date>', methods=['GET'])
 @jwt_required()
 def get_student_calendar_by_date(student_id, date):
+
     try:
+        jwt_id = get_jwt_identity()
+        print(jwt_id)
+        identity = json.loads(jwt_id)
+
+        if identity['role'] != 'student':
+            return make_response({'message': 'Only students can view their calender events'}, 403)
+        
+       # Validate the provided date format
+        try:
+           datetime_obj = datetime.strptime(date, "%Y-%m-%d")
+        except ValueError:
+           return jsonify({"message": "Invalid date format. Please use YYYY-MM-DD."}), 400
+        
         cnx = get_db_connection()
         cursor = cnx.cursor(dictionary=True)
         cursor.execute("""
             SELECT c.EventID, c.DueDate, c.Title FROM calendarevents c
             JOIN assigned a ON a.CourseID = c.CourseId
             WHERE a.UserID = %s AND c.DueDate = %s
-        """, (student_id, date))
+        """, (student_id, datetime_obj.date()))
         events = cursor.fetchall()
         cnx.close()
 
@@ -332,13 +347,31 @@ def create_calendar_event():
         return make_response({'message': 'Only lecturers can create calendar events'}, 403)
 
     try:
+
+        cnx = get_db_connection()
+        cursor = cnx.cursor()
+        
         content = request.json
         courseId = content['courseId']
         event_date = content['event_date']
         title = content['title']
 
+        #To esnure all data is entered
+        if not all([courseId, event_date, title]):
+            return jsonify({"message": "Missing required fields (courseId, event_date, title)"}), 400 
+        
+
         cnx = get_db_connection()
         cursor = cnx.cursor()
+
+        # Check if the course exists
+        cursor.execute("SELECT * FROM Course WHERE CourseId = %s", (courseId,))
+        course = cursor.fetchone()
+
+        if not course:
+            return jsonify({"message": "Course not found"}), 404
+
+
         cursor.execute("INSERT INTO calendarevents (CourseID, Title, DueDate) VALUES (%s, %s, %s)",
                        (courseId, title, event_date))
         cnx.commit()
