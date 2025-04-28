@@ -33,26 +33,37 @@ def welcome():
 
 @app.route('/register', methods=['POST'])
 def register():
-    data = request.get_json()
-    cnx = get_db_connection()
-    cursor = cnx.cursor()
-    first_name = data['first_name']
-    last_name = data['last_name']
-    password = data['password']
-    account_type = data['AccountType']
-    try:
-        #Creates the new if there are no problems
-        cursor.execute("INSERT INTO account (Password, AccountType) VALUES (%s, %s)", (password, account_type))
 
-        acc_id = cursor.lastrowid
+    try:
+        data = request.get_json()
+        cnx = get_db_connection()
+        cursor = cnx.cursor()
+        userId = data['userId']
+        userId = int(userId)
+        first_name = data['first_name']
+        last_name = data['last_name']
+        password = data['password']
+        account_type = data['AccountType']
+    
+
+        #if not userId or not first_name or not last_name or not password or not account_type:
+            #return jsonify({"message":"Invalid request. Please provide all required fields (UserId, FristName, LastName, Password, AccountType)"}), 400
+        
+        if account_type not in ['Admin', 'Lecturer', 'Student']:
+            return jsonify({"message":"Invalid account type. Must be one of 'Admin', 'Lecturer', 'Student'"}), 400
+        
+        #Creates the new if there are no problems
+        cursor.execute("INSERT INTO account (UserID, Password, AccountType) VALUES (%s, %s, %s)", (userId, password, account_type))
+
 
         cursor.execute(f"INSERT INTO {account_type} (UserID, FirstName, LastName)"
                         " VALUES (%s, %s, %s)",
-                        (acc_id, first_name, last_name))
+                        (userId, first_name, last_name))
 
         cnx.commit()
         cursor.close()
         cnx.close()
+
         return make_response(jsonify({"message":'User registered successfully'}), 201)
     except Exception as e:
         return make_response(jsonify({"error":str(e)}), 400)
@@ -65,6 +76,10 @@ def login():
         cursor = cnx.cursor(dictionary=True)
         UserID = data.get('UserID')
         password = data.get('password')
+
+        if not UserID or not password:
+             return jsonify({"message":"Invalid request. Please provide all required fields (UserID, password)"}), 400
+        
         cursor.execute("SELECT * FROM account WHERE UserID = %s AND password = %s", (UserID, password))
         user = cursor.fetchone()
         cursor.close()
@@ -89,6 +104,7 @@ def create_course():
     jwt_id = get_jwt_identity()
     identity = json.loads(jwt_id)
     
+    #check to ensure user is an admin
     if identity['role'] != 'admin':
         return make_response(jsonify(message='Unauthorized'), 403)
 
@@ -97,6 +113,10 @@ def create_course():
     cursor = cnx.cursor()
     courseName = data['CourseName']
     lecturerid = data['lecturer_id']
+
+    #check to see if all data is entered
+    if not courseName or not lecturerid:
+        return jsonify({"message":"Please provide all required fields. (CourseName, lecturer_id)"}), 400
 
     #check to see if lecturer is teaching more than 4 courses
     try:
