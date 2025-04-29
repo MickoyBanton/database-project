@@ -629,6 +629,15 @@ def create_section(course_id):
         content = request.get_json()
         title = content['title']
 
+        if not course_id or not title or not title:
+            return jsonify({"message": "Missing required fields (course_Id and title)"}), 400
+        
+        # Check if the course exists
+        cursor.execute("SELECT CourseID FROM Course WHERE CourseID = %s", (course_id,))
+
+        if cursor.fetchone() is None:
+            return jsonify({"message": "Course not found"}), 404
+
         cnx = get_db_connection()
         cursor = cnx.cursor()
         cursor.execute("""
@@ -651,6 +660,12 @@ def get_sections(course_id):
     try:
         cnx = get_db_connection()
         cursor = cnx.cursor()
+        # Check if the course exists
+        cursor.execute("SELECT CourseID FROM Course WHERE CourseID = %s", (course_id,))
+        
+        if cursor.fetchone() is None:
+            return jsonify({"message": "Course not found"}), 404
+        
         cursor.execute("""
             SELECT SectionID, SectionName
             FROM Section
@@ -665,7 +680,7 @@ def get_sections(course_id):
         return make_response({'error': f'Failed to fetch sections: {str(e)}'}, 400)
 
 
-# Add content to a section (Lecturers only)
+# Add section item (Lecturers only)
 @app.route('/sections/<section_id>/content', methods=['POST'])
 @jwt_required()
 def create_section_item(section_id):
@@ -675,12 +690,18 @@ def create_section_item(section_id):
 
         if identity['role'] != 'lecturer':
             return make_response({'error': 'Only lecturers can add content'}, 403)
-
+        
         content = request.get_json()
         cnx = get_db_connection()
         cursor = cnx.cursor()
         content_type = content['content_type'] #links, file, slides
         content_value = content['content'] #url or text
+
+        if content_type not in ['Links', 'Files', 'Slides']:
+            return jsonify({"message":"Invalid account type. Must be one of 'Links', 'Files', 'Slides'"}), 400
+        
+        if not content_value:
+            return jsonify({"message": "Missing required fields (content_value)"}), 400
 
         cursor.execute("""
             INSERT INTO sectionitems (SectionID, FileType, SectionItem)
@@ -695,7 +716,7 @@ def create_section_item(section_id):
         return make_response({'error': f'Failed to add content: {str(e)}'}, 400)
 
 
-# Get content in a section
+# Get content in a section item
 @app.route('/sections/<section_id>/section-item', methods=['GET'])
 @jwt_required()
 def get_section_item(section_id):
@@ -722,6 +743,7 @@ def get_section_item(section_id):
 def submit_assignment(assignment_id):
     jwt_id = get_jwt_identity()
     identity = json.loads(jwt_id)
+
     if identity['role'] != 'student':
         return make_response({'error': 'Only students can submit assignments'}, 401)
     try:
@@ -731,6 +753,9 @@ def submit_assignment(assignment_id):
         content = request.json
         submission_date = content['submission_date']
 
+        if not submission_date:
+            return jsonify({"message": "Missing required fields (submission_date)"}), 400
+        
         cursor.execute("""
             INSERT INTO submitassignment (UserID, AssignmentID, SubmissionDate) 
             VALUES (%s, %s, %s)
@@ -759,10 +784,13 @@ def grade_submission(submission_id):
         content = request.json
         grade = content['grade']
 
+        if not grade:
+            return jsonify({"message": "Missing required fields (grade)"}), 400
+
         cursor.execute("""
-            INSERT INTO grading (SubmissionID, UserID, Grade)
-            VALUES (%s, %s, %s)
-        """, (submission_id, lecturer_id, grade))
+            INSERT INTO grading (SubmissionID, Grade)
+            VALUES (%s, %s)
+        """, (submission_id, grade))
         cnx.commit()
         cursor.close()
         cnx.close()
