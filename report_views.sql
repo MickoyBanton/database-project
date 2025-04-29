@@ -36,12 +36,12 @@ ORDER BY NumEnrolled DESC
 LIMIT 10;
 
 -- The top 10 students with the highest overall averages
-CREATE VIEW Top_10_Highest_Average AS
-SELECT g.UserID, s.FirstName, s.LastName, AVG(g.Grade) AS AverageGrade
-FROM Grading g
-INNER JOIN Student s
-ON g.UserID = s.UserID
-GROUP BY g.UserID, s.FirstName, s.LastName
-ORDER BY AverageGrade
+CREATE OR REPLACE VIEW Top10StudentsByAverage AS
+SELECT s.UserID, s.FirstName, s.LastName, ROUND(AVG(g.Grade), 2) AS AverageGrade
+FROM Student s
+JOIN SubmitAssignment sa ON s.UserID = sa.UserID
+JOIN Grading g ON sa.SubmissionID = g.SubmissionID
+GROUP BY s.UserID, s.FirstName, s.LastName
+ORDER BY AverageGrade DESC
 LIMIT 10;
 
