@@ -396,7 +396,7 @@ def get_forums(course_id):
     try:
         cnx = get_db_connection()
         cursor = cnx.cursor(dictionary=True)
-        
+
         # Check if the course exists
         cursor.execute("SELECT CourseID FROM Course WHERE CourseID = %s", (course_id,))
         if cursor.fetchone() is None:
@@ -482,11 +482,48 @@ def create_thread(forum_id):
         parent_id = content.get('parent_id')
         identity = json.loads(get_jwt_identity())
         created_by = identity.get('id') 
+
+        if not message:
+            return jsonify({"message": "Missing message field"}), 400
+        
+        cursor.execute("""
+          SELECT CourseID
+          FROM DiscussionForum
+          WHERE ForumID = %s
+          """, (forum_id,))
+
+        row = cursor.fetchone()
+        if not row:
+            return jsonify({"message": "Forum not found"}), 404
+        courseID = row[0]
+
+        cursor.execute(""" 
+               SELECT UserID
+               FROM assigned
+               where CourseID = %s AND UserID = %s;
+        """, (courseID, created_by))
+
+        student = cursor.fetchone()
+
+        if student is None:
+
+            cursor.execute(""" 
+               SELECT UserID
+               FROM teach
+               where CourseID = %s AND UserID = %s;
+        """, (courseID, created_by))
+            
+            lecturer = cursor.fetchone()
+
+            if lecturer is None:
+                return jsonify({"message": "User is not a member of the course associated with this forum"}), 403
+        
         
         cursor.execute("""
             INSERT INTO discussionthread (ForumID, UserID, Message, ParentThreadId)
             VALUES (%s, %s, %s, %s)
         """, (forum_id, created_by, message, parent_id))
+
         cnx.commit()
         cursor.close()
         cnx.close()
@@ -498,20 +535,56 @@ def create_thread(forum_id):
 #create replies
 @app.route('/threads/<thread_id>/replies', methods=['POST'])
 @jwt_required()
-def create_reply():
+def create_reply(thread_id):
     try:
         cnx = get_db_connection()
         cursor = cnx.cursor()
         content = request.json
         message = content['message']
-        parent_id = content.get('parent_id')
         identity = json.loads(get_jwt_identity())
         created_by = identity.get('id')
+
+        if not message:
+            return jsonify({"message": "Missing message field"}), 400
+        
+        cursor.execute("""
+          select df.CourseID
+          FROM discussionthread dt
+          JOIN discussionforum df
+          ON dt.ForumID = df.ForumID
+          WHERE dt.ThreadID  = %s
+          """, (thread_id,))
+
+        row = cursor.fetchone()
+        if not row:
+            return jsonify({"message": "Thread not found"}), 404
+        courseID = row[0]
+
+        cursor.execute(""" 
+               SELECT UserID
+               FROM assigned
+               where CourseID = %s AND UserID = %s;
+        """, (courseID, created_by))
+
+        student = cursor.fetchone()
+
+        if student is None:
+
+            cursor.execute(""" 
+               SELECT UserID
+               FROM teach
+               where CourseID = %s AND UserID = %s;
+        """, (courseID, created_by))
+            
+            lecturer = cursor.fetchone()
+
+            if lecturer is None:
+                return jsonify({"message": "User is not a member of the course associated with this forum"}), 403
 
         cursor.execute("""
             INSERT INTO discussionthread (UserID, Message, ParentThreadId)
             VALUES (%s, %s, %s)
-        """, (created_by, message, parent_id))
+        """, (created_by, message, thread_id))
 
         cnx.commit()
         cursor.close()
