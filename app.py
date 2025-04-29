@@ -30,7 +30,7 @@ def get_db_connection():
 def welcome():
     return "Welcome to OURVLE!"
 
-
+#register students and lecturers
 @app.route('/register', methods=['POST'])
 def register():
 
@@ -49,8 +49,8 @@ def register():
         #if not userId or not first_name or not last_name or not password or not account_type:
             #return jsonify({"message":"Invalid request. Please provide all required fields (UserId, FristName, LastName, Password, AccountType)"}), 400
         
-        if account_type not in ['Admin', 'Lecturer', 'Student']:
-            return jsonify({"message":"Invalid account type. Must be one of 'Admin', 'Lecturer', 'Student'"}), 400
+        if account_type not in ['Lecturer', 'Student']:
+            return jsonify({"message":"Invalid account type. Must be one of 'Lecturer', 'Student'"}), 400
         
         #Creates the new if there are no problems
         cursor.execute("INSERT INTO account (UserID, Password, AccountType) VALUES (%s, %s, %s)", (userId, password, account_type))
@@ -68,6 +68,7 @@ def register():
     except Exception as e:
         return make_response(jsonify({"error":str(e)}), 400)
 
+#students, admins and lecturers login
 @app.route('/login', methods=['POST'])
 def login():
     try:
@@ -144,7 +145,8 @@ def create_course():
     
     except Exception as e:
         return make_response(jsonify(error=f"Course was not created: {str(e)}"), 400)
-    
+
+#view all courses    
 @app.route('/courses', methods=['GET'])
 @jwt_required()
 def get_courses():
@@ -161,6 +163,7 @@ def get_courses():
     except Exception as e:
         return make_response({'error': str(e)}, 400)
 
+#get all the courses a student is taking
 @app.route('/get_student/<student_id>/courses', methods=['GET'])
 @jwt_required()
 def get_student_courses(student_id):
@@ -188,7 +191,8 @@ def get_student_courses(student_id):
         return make_response(jsonify(courses), 200)
     except Exception as e:
         return make_response({'error': str(e)}, 400)
-    
+
+#get all the courses a lecturer is teaching
 @app.route('/lecturers/<lecturer_id>/courses', methods=['GET'])
 @jwt_required()
 def get_lecturer_courses(lecturer_id):
@@ -215,6 +219,7 @@ def get_lecturer_courses(lecturer_id):
         return make_response({'error': str(e)}, 400)
 
 
+#allows students to enroll in courses
 @app.route('/courses/<courseId>/enroll', methods=['POST'])
 @jwt_required()
 def enroll_course(courseId):
@@ -247,7 +252,7 @@ def enroll_course(courseId):
     except Exception as e:
         return make_response({'error': str(e)}, 400)
 
-
+#get all the members of a course
 @app.route('/courses/<courseId>/members', methods=['GET'])
 @jwt_required()
 def get_course_members(courseId):
@@ -283,6 +288,7 @@ def get_course_members(courseId):
     except Exception as e:
         return make_response({'error':f"Could not get course members: {str(e)}"}, 400)
 
+#get all calender events from a specif course
 @app.route('/courses/<course_id>/calendar', methods=['GET'])
 @jwt_required()
 def get_course_calendar(course_id):
@@ -337,6 +343,7 @@ def get_student_calendar_by_date(student_id, date):
     except Exception as e:
         return make_response({'error': str(e)}, 400)
 
+#create a calender
 @app.route('/calendar', methods=['POST'])
 @jwt_required()
 def create_calendar_event():
@@ -382,6 +389,7 @@ def create_calendar_event():
     except Exception as e:
         return make_response({'error': f'Calendar event was not created: {str(e)}'}, 400)
 
+#get all discussion forums from a particular course
 @app.route('/courses/<course_id>/forums', methods=['GET'])
 @jwt_required()
 def get_forums(course_id):
@@ -397,6 +405,7 @@ def get_forums(course_id):
     except Exception as e:
         return make_response({'error': str(e)}, 400)
 
+#create a forum
 @app.route('/forums', methods=['POST'])
 @jwt_required()
 def create_forum():
@@ -426,7 +435,7 @@ def create_forum():
     except Exception as e:
         return make_response({'error': str(e)}, 400)
 
-
+#get all first level thread from a particular forum
 @app.route('/forums/<forum_id>/threads', methods=['GET'])
 @jwt_required()
 def get_threads(forum_id):
@@ -447,7 +456,7 @@ def get_threads(forum_id):
     except Exception as e:
         return make_response({'error': str(e)}, 400)
 
-#get all top level threads
+#create threads
 @app.route('/forums/<forum_id>/threads', methods=['POST'])
 @jwt_required()
 def create_thread(forum_id):
@@ -497,7 +506,7 @@ def create_reply():
     except Exception as e:
         return make_response({'error': str(e)}, 400)
 
-#get all replies
+#get all replies from a particular thread
 @app.route('/threads/<thread_id>/replies', methods=['GET'])
 @jwt_required()
 def get_replies(thread_id):
@@ -620,7 +629,7 @@ def get_section_item(section_id):
         return make_response({'error': f'Failed to fetch content: {str(e)}'}, 400)
 
 
-
+#allow students to submit an assignment
 @app.route('/assignments/<assignment_id>/submit', methods=['POST'])
 @jwt_required()
 def submit_assignment(assignment_id):
@@ -647,6 +656,7 @@ def submit_assignment(assignment_id):
     except Exception as e:
         return make_response({'error': str(e)}, 400)
 
+#allow lectuter to submit a grade
 @app.route('/assignments/<submission_id>/grade', methods=['POST'])
 @jwt_required()
 def grade_submission(submission_id):
@@ -674,6 +684,7 @@ def grade_submission(submission_id):
     except Exception as e:
         return make_response({'error': str(e)}, 400)
 
+#get grades
 @app.route('/assignments/<assignment_id>/grades', methods=['GET'])
 @jwt_required()
 def get_grades(assignment_id):
@@ -695,6 +706,7 @@ def get_grades(assignment_id):
     except Exception as e:
         return make_response({'error': str(e)}, 400)
 
+#create an assignement
 @app.route('/assignments', methods=['POST'])
 @jwt_required()
 def create_assignment():
@@ -718,7 +730,7 @@ def create_assignment():
         return make_response({'error': str(e)}, 400)
 
 
-
+# get top 10 most enrolled courses 
 @app.route('/reports/top_10_courses', methods=['GET'])
 @jwt_required()
 def top_10_courses():
@@ -733,6 +745,7 @@ def top_10_courses():
     except Exception as e:
         return make_response({'error': str(e)}, 400)
 
+#get top 10 highest average
 @app.route('/reports/top_10_students', methods=['GET'])
 @jwt_required()
 def top_10_students():
@@ -747,6 +760,7 @@ def top_10_students():
     except Exception as e:
         return make_response({'error': str(e)}, 400)
 
+#get courses with 50 or more students
 @app.route('/reports/up-50-students', methods=['GET'])
 @jwt_required()
 def up_50_students():
@@ -761,6 +775,7 @@ def up_50_students():
     except Exception as e:
         return make_response({'error': str(e)}, 400)
 
+#get students enrolled in 5 or more courses
 @app.route('/reports/up-5-courses', methods=['GET'])
 @jwt_required()
 def up_5_courses():
@@ -775,6 +790,7 @@ def up_5_courses():
     except Exception as e:
         return make_response({'error': str(e)}, 400)
 
+#get lecturers teaching 3 or more courses
 @app.route('/reports/up-3-courses', methods=['GET'])
 @jwt_required()
 def up_3_courses():
