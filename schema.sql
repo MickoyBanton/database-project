@@ -70,17 +70,16 @@ CREATE TABLE SubmitAssignment (
 
 -- Grading
 CREATE TABLE Grading (
-    SubmissionID INT PRIMARY KEY REFERENCES SubmitAssignment(SubmissionID),
-    UserID INT,
+    SubmissionID INT,
     Grade DECIMAL(5,2),
-    FOREIGN KEY (UserID) REFERENCES Lecturer(UserID)
+    PRIMARY KEY (SubmissionID),
+    FOREIGN KEY (SubmissionID) REFERENCES SubmitAssignment(SubmissionID)
 );
 
 -- Section Table
 CREATE TABLE Section (
     SectionID INT PRIMARY KEY AUTO_INCREMENT,
     CourseID INT REFERENCES Course(CourseID),
-    UserID INT REFERENCES Lecturer(UserID),
     SectionName VARCHAR(100)
 );
 
