@@ -288,7 +288,7 @@ def get_course_members(courseId):
     except Exception as e:
         return make_response({'error':f"Could not get course members: {str(e)}"}, 400)
 
-#get all calender events from a specif course
+#get all calender events from a specific course
 @app.route('/courses/<course_id>/calendar', methods=['GET'])
 @jwt_required()
 def get_course_calendar(course_id):
@@ -396,6 +396,12 @@ def get_forums(course_id):
     try:
         cnx = get_db_connection()
         cursor = cnx.cursor(dictionary=True)
+        
+        # Check if the course exists
+        cursor.execute("SELECT CourseID FROM Course WHERE CourseID = %s", (course_id,))
+        if cursor.fetchone() is None:
+            return jsonify({"message": "Course not found"}), 404
+        
         cursor.execute("SELECT * FROM discussionforum WHERE CourseID = %s",(course_id,))
         forums = cursor.fetchall()
         cursor.close()
@@ -423,6 +429,14 @@ def create_forum():
         courseId = content['courseId']
         title = content['title']
         question = content['question']
+
+        if not courseId or not title or not question:
+            return jsonify({"message": "Missing required fields (courseId, Title and question)"}), 400
+        
+        # Check if the course exists
+        cursor.execute("SELECT CourseID FROM Course WHERE CourseID = %s", (courseId,))
+        if cursor.fetchone() is None:
+            return jsonify({"message": "Course not found"}), 404
 
         cnx = get_db_connection()
         cursor = cnx.cursor()
