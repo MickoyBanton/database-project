@@ -109,7 +109,8 @@ CREATE TABLE DiscussionThread (
     Message TEXT,
     ParentThreadId INT,
     FOREIGN KEY (ForumId) REFERENCES DiscussionForum(ForumId),
-    FOREIGN KEY (UserId) REFERENCES Account(UserId)
+    FOREIGN KEY (UserId) REFERENCES Account(UserId),
+    FOREIGN KEY (ParentThreadId) REFERENCES DiscussionThread(ThreadID)
 );
 
 -- Calendar Events
