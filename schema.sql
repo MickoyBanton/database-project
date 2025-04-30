@@ -12,7 +12,7 @@ CREATE TABLE Account (
 CREATE TABLE Student (
     UserID INT PRIMARY KEY REFERENCES Account(UserID),
     FirstName VARCHAR(100),
-    LastName VARCHAR(100),
+    LastName VARCHAR(100)
 );
 
 CREATE TABLE Lecturer (
